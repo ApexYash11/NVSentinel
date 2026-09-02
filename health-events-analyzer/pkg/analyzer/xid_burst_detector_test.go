@@ -40,6 +40,31 @@ func createXidEvent(nodeName, xidCode string, timestamp time.Time) *protos.Healt
 	}
 }
 
+// TestXidBurstDetector_NilGeneratedTimestamp_NoPanic is a regression probe:
+// ProcessEvent dereferences event.GeneratedTimestamp without a nil check.
+// Events with a nil timestamp are a real occurrence in the system —
+// platform-connectors implements safeTimestamp specifically to handle
+// "HealthEvent has nil GeneratedTimestamp".
+func TestXidBurstDetector_NilGeneratedTimestamp_NoPanic(t *testing.T) {
+	d := NewXidBurstDetector()
+
+	ev := &protos.HealthEvent{
+		NodeName:       "node-nil-ts",
+		Agent:          "gpu-health-monitor",
+		ComponentClass: "GPU",
+		IsHealthy:      false,
+		ErrorCode:      []string{"79"},
+		// GeneratedTimestamp intentionally nil
+		EntitiesImpacted: []*protos.Entity{
+			{EntityType: "GPU", EntityValue: "0"},
+		},
+	}
+
+	assert.NotPanics(t, func() {
+		d.ProcessEvent(ev)
+	}, "ProcessEvent must not panic on a health event with a nil GeneratedTimestamp")
+}
+
 // Helper function to create test XID events for a specific GPU (by UUID or ordinal).
 // Uses the production "GPU_UUID" entity type emitted by the syslog health monitor.
 func createXidEventForGPU(nodeName, xidCode, gpuUUID string, timestamp time.Time) *protos.HealthEvent {
