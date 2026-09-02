@@ -40,11 +40,13 @@ func createXidEvent(nodeName, xidCode string, timestamp time.Time) *protos.Healt
 	}
 }
 
-// TestXidBurstDetector_NilGeneratedTimestamp_NoPanic is a regression probe:
-// ProcessEvent dereferences event.GeneratedTimestamp without a nil check.
-// Events with a nil timestamp are a real occurrence in the system —
-// platform-connectors implements safeTimestamp specifically to handle
-// "HealthEvent has nil GeneratedTimestamp".
+// TestXidBurstDetector_NilGeneratedTimestamp_NoPanic is a regression test:
+// ProcessEvent previously dereferenced event.GeneratedTimestamp without a nil
+// check, panicking on events with a missing timestamp and (because failed
+// events are redelivered via the resume token) crash-looping the analyzer.
+// It now skips such events; nil timestamps are a real occurrence in the
+// system — platform-connectors implements safeTimestamp specifically to
+// handle "HealthEvent has nil GeneratedTimestamp".
 func TestXidBurstDetector_NilGeneratedTimestamp_NoPanic(t *testing.T) {
 	d := NewXidBurstDetector()
 
